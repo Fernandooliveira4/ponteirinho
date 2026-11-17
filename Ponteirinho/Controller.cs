@@ -46,12 +46,27 @@ namespace Ponteirinho
             ("Vem do canto inferior esquerdo", StickSide.Left),
         };
 
-        private static readonly (string Label, ClickSoundKind Kind)[] SoundKinds =
+        // Header = null: item normal; texto: título cinza de um grupo.
+        private static readonly (string Header, string Label, ClickSoundKind Kind)[] SoundKinds =
         {
-            ("Desligado", ClickSoundKind.Off),
-            ("Pop suave", ClickSoundKind.Pop),
-            ("Toque de madeira", ClickSoundKind.Toque),
-            ("Bolha", ClickSoundKind.Bolha),
+            (null, "Desligado", ClickSoundKind.Off),
+            ("Suaves", "Pop suave", ClickSoundKind.Pop),
+            (null, "Toque de madeira", ClickSoundKind.Toque),
+            (null, "Bolha", ClickSoundKind.Bolha),
+            (null, "Clique de mouse", ClickSoundKind.Clique),
+            (null, "Boop grave", ClickSoundKind.Boop),
+            (null, "Bloco de madeira", ClickSoundKind.Madeira),
+            ("Batidas e teclas", "Toc", ClickSoundKind.Toc),
+            (null, "Tecla mecânica", ClickSoundKind.Tecla),
+            (null, "Tecla grave (thock)", ClickSoundKind.Teclado),
+            (null, "Máquina de escrever", ClickSoundKind.MaquinaDeEscrever),
+            (null, "Estalo de dedos", ClickSoundKind.Estalo),
+            ("Divertidos", "Videogame (blip)", ClickSoundKind.Videogame),
+            (null, "Moedinha", ClickSoundKind.Moeda),
+            (null, "Laser (piu!)", ClickSoundKind.Laser),
+            (null, "Brinquedo de apertar", ClickSoundKind.Brinquedo),
+            (null, "Pato", ClickSoundKind.Pato),
+            (null, "Passarinho", ClickSoundKind.Passarinho),
         };
 
         private static readonly string[] VolumeLabels = { "Volume baixo", "Volume médio", "Volume alto" };
@@ -628,8 +643,13 @@ namespace Ponteirinho
 
             // Som ao clicar
             var soundMenu = new WinForms.ToolStripMenuItem("Som ao clicar");
-            foreach (var (label, kind) in SoundKinds)
+            foreach (var (header, label, kind) in SoundKinds)
             {
+                if (header != null)
+                {
+                    soundMenu.DropDownItems.Add(new WinForms.ToolStripSeparator());
+                    soundMenu.DropDownItems.Add(new WinForms.ToolStripMenuItem(header) { Enabled = false });
+                }
                 var item = new WinForms.ToolStripMenuItem(label) { Checked = _settings.Sound == kind, Tag = kind };
                 item.Click += (s, e) =>
                 {

@@ -22,7 +22,7 @@ Uma mãozinha com uma vareta de professor que aponta para onde está o mouse. Fe
 | Cor | só para as mãos "com cor à sua escolha" e o Laser: Lavanda, Rosa, Vermelho, Laranja, Amarelo, Verde, Azul, Branco, Preto, 3 tons de pele |
 | Tamanho | Pequena, Média, Grande, Enorme |
 | Vareta | de onde vem (direita, centro, esquerda) e cor (preta ou madeira; a cor só vale para as mãos pintáveis, as 3D usam a vareta do próprio desenho) |
-| Som ao clicar | Desligado, Pop suave, Toque de madeira, Bolha + volume baixo/médio/alto |
+| Som ao clicar | 17 sons em 3 grupos (Suaves; Batidas e teclas; Divertidos como Moedinha, Laser, Pato e Passarinho) + volume baixo/médio/alto. Ao escolher, o som toca uma vez para você ouvir |
 | Desenhar ao arrastar | liga/desliga o risco que some (o mesmo que Ctrl+Alt+D) |
 | Desenho (cor e tempo) | Roxo, Vermelho, Laranja, Amarelo, Verde, Azul, Rosa, Branco, Preto + some depois de 1; 1,5; 3 ou 6 segundos |
 | Esconder o cursor do mouse | ligado por padrão: enquanto a mão aparece, a ponta do dedo vira o cursor |
@@ -54,7 +54,7 @@ As preferências ficam salvas em `%APPDATA%\Ponteirinho\settings.json`.
 
 ## Créditos
 
-As 36 mãos 3D vêm do app TinyHand para Mac (github.com/nilbuild/tinyhand), de Kamran Ahmed, sob **licença MIT**. Essa licença permite usar e modificar as imagens, desde que o aviso dela vá junto. Por isso o arquivo `LICENSE-TinyHand.txt` fica ao lado do `Ponteirinho.exe`, e o menu tem o item "Créditos".
+As 36 mãos 3D vêm do app TinyHand para Mac (github.com/nilbuild/tinyhand), de Kamran Ahmed, sob **licença MIT**. Várias receitas de som ao clicar também foram adaptadas do script `make-sounds.py` do TinyHand. Essa licença permite usar e modificar as imagens, desde que o aviso dela vá junto. Por isso o arquivo `LICENSE-TinyHand.txt` fica ao lado do `Ponteirinho.exe`, e o menu tem o item "Créditos".
 
 ## Como as cores funcionam (mãos pintáveis)
 
