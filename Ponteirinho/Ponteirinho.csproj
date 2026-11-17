@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AssemblyName>Ponteirinho</AssemblyName>
+    <RootNamespace>Ponteirinho</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- O DPI por monitor é configurado no manifest porque o WPF lê de lá. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Version>0.1.0</Version>
+    <Product>Ponteirinho</Product>
+    <Description>Uma mãozinha com vareta que aponta para onde o mouse está.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\hand-*.png" />
+    <!-- Mãos 3D do TinyHand (github.com/nilbuild/tinyhand), licença MIT. -->
+    <Resource Include="Assets\tinyhand\*.png" />
+    <Content Include="Assets\tinyhand\LICENSE-TinyHand.txt" Link="LICENSE-TinyHand.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

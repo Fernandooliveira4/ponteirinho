@@ -1,0 +1,14 @@
+# Saída de compilação (recriada pelo dotnet build/publish)
+bin/
+obj/
+Ponteirinho-app/
+
+# Arquivos do Visual Studio / editores
+.vs/
+*.user
+*.suo
+.vscode/
+
+# Sistema
+Thumbs.db
+desktop.ini
