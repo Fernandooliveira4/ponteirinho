@@ -23,14 +23,63 @@ namespace Ponteirinho
         public const uint MOD_NOREPEAT = 0x4000;
 
         public const int WH_MOUSE_LL = 14;
+        public const int WM_MOUSEMOVE = 0x0200;
         public const int WM_LBUTTONDOWN = 0x0201;
+        public const int WM_LBUTTONUP = 0x0202;
         public const int WM_RBUTTONDOWN = 0x0204;
+
+        public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+        public const uint MOUSEEVENTF_LEFTUP = 0x0004;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct POINT
         {
             public int X;
             public int Y;
+        }
+
+        /// <summary>O que o hook de mouse recebe a cada evento.</summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MSLLHOOKSTRUCT
+        {
+            public POINT Pt;
+            public uint MouseData;
+            public uint Flags;
+            public uint Time;
+            public IntPtr ExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MOUSEINPUT
+        {
+            public int Dx;
+            public int Dy;
+            public uint MouseData;
+            public uint Flags;
+            public uint Time;
+            public IntPtr ExtraInfo;
+        }
+
+        // INPUT tem uma união com teclado/hardware; MOUSEINPUT é o maior membro em 64 bits.
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INPUT
+        {
+            public uint Type; // 0 = mouse
+            public MOUSEINPUT Mouse;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint count, INPUT[] inputs, int size);
+
+        /// <summary>Simula um clique esquerdo onde o cursor está, marcado com <paramref name="tag"/>.</summary>
+        public static void SendLeftClick(IntPtr tag)
+        {
+            var inputs = new[]
+            {
+                new INPUT { Type = 0, Mouse = new MOUSEINPUT { Flags = MOUSEEVENTF_LEFTDOWN, ExtraInfo = tag } },
+                new INPUT { Type = 0, Mouse = new MOUSEINPUT { Flags = MOUSEEVENTF_LEFTUP, ExtraInfo = tag } },
+            };
+            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
         }
 
         public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -52,6 +53,12 @@ namespace Ponteirinho
         private readonly ScaleTransform _press = new ScaleTransform(1, 1);
         private readonly RotateTransform _rotate = new RotateTransform();
         private readonly TranslateTransform _toCursor = new TranslateTransform();
+
+        private static readonly Brush InkShadowBrush = Frozen(new SolidColorBrush(Color.FromArgb(46, 0, 0, 0)));
+
+        private readonly Canvas _inkLayer = new Canvas();
+        private readonly Dictionary<InkStroke, (Path Line, Path Shadow, int Version)> _inkPaths =
+            new Dictionary<InkStroke, (Path, Path, int)>();
 
         private IntPtr _hwnd;
         private bool _rigVisible = true;
@@ -112,6 +119,7 @@ namespace Ponteirinho
             _rig.Children.Add(_ripple);
 
             var root = new Canvas { IsHitTestVisible = false };
+            root.Children.Add(_inkLayer); // riscos ficam embaixo da mão
             root.Children.Add(_rig);
             Content = root;
 
@@ -236,6 +244,65 @@ namespace Ponteirinho
             else if (_ripple.Visibility == Visibility.Visible)
             {
                 _ripple.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        /// <summary>Mostra os riscos atuais: cria, redesenha ou apaga os que mudaram.</summary>
+        public void UpdateInk(List<InkStroke> strokes)
+        {
+            if (_inkPaths.Count == 0 && strokes.Count == 0) return;
+
+            // Riscos que já sumiram.
+            if (_inkPaths.Count > 0)
+            {
+                List<InkStroke> gone = null;
+                foreach (var s in _inkPaths.Keys)
+                    if (!strokes.Contains(s)) (gone ??= new List<InkStroke>()).Add(s);
+                if (gone != null)
+                {
+                    foreach (var s in gone)
+                    {
+                        var (line, shadow, _) = _inkPaths[s];
+                        _inkLayer.Children.Remove(line);
+                        _inkLayer.Children.Remove(shadow);
+                        _inkPaths.Remove(s);
+                    }
+                }
+            }
+
+            double dpi = 0;
+            foreach (var s in strokes)
+            {
+                if (!_inkPaths.TryGetValue(s, out var entry))
+                {
+                    var brush = new SolidColorBrush(s.Color);
+                    brush.Freeze();
+                    Path Make(Brush b) => new Path
+                    {
+                        Stroke = b,
+                        StrokeThickness = s.Width,
+                        StrokeStartLineCap = PenLineCap.Round,
+                        StrokeEndLineCap = PenLineCap.Round,
+                        StrokeLineJoin = PenLineJoin.Round,
+                    };
+                    var shadow = Make(InkShadowBrush);
+                    shadow.RenderTransform = new TranslateTransform(1.5, 2);
+                    var line = Make(brush);
+                    _inkLayer.Children.Add(shadow);
+                    _inkLayer.Children.Add(line);
+                    entry = (line, shadow, -1);
+                }
+
+                if (entry.Version != s.Version)
+                {
+                    if (dpi == 0) dpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
+                    var geometry = s.BuildGeometry(PixelBounds.X, PixelBounds.Y, dpi);
+                    entry.Line.Data = geometry;
+                    entry.Shadow.Data = geometry;
+                    entry.Version = s.Version;
+                }
+                entry.Line.Opacity = entry.Shadow.Opacity = s.Opacity;
+                _inkPaths[s] = entry;
             }
         }
 

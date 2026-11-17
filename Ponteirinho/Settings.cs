@@ -50,6 +50,14 @@ namespace Ponteirinho
         /// <summary>0 = baixo, 1 = médio, 2 = alto.</summary>
         public int Volume { get; set; } = 1;
 
+        /// <summary>Clicar e arrastar desenha um risco que some sozinho.</summary>
+        public bool DrawEnabled { get; set; } = false;
+
+        public string InkColor { get; set; } = "#8754F2";
+
+        /// <summary>Quanto tempo o risco fica na tela antes de começar a sumir.</summary>
+        public double InkSeconds { get; set; } = 1.5;
+
         public static Settings Load()
         {
             try

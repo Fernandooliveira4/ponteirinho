@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -19,6 +20,12 @@ namespace Ponteirinho
     {
         private const int HotkeyId = 1;
         private const string HotkeyLabel = "Ctrl+Alt+H";
+        private const int DrawHotkeyId = 2;
+        private const string DrawHotkeyLabel = "Ctrl+Alt+D";
+        private const int DragThreshold = 6;         // pixels que o mouse anda até virar risco
+        private const double InkFadeDuration = 0.6;  // segundos
+        // Marca os cliques que o próprio Ponteirinho reenvia, para o hook deixá-los passar.
+        private static readonly IntPtr ReplayTag = new IntPtr(0x50544E48);
         private const double PressDuration = 0.16;  // segundos
         private const double RippleDuration = 0.38; // segundos
         private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
@@ -49,6 +56,27 @@ namespace Ponteirinho
 
         private static readonly string[] VolumeLabels = { "Volume baixo", "Volume médio", "Volume alto" };
 
+        private static readonly (string Name, string Hex)[] InkColors =
+        {
+            ("Roxo", "#8754F2"),
+            ("Vermelho", "#FF2A1F"),
+            ("Laranja", "#FF8A00"),
+            ("Amarelo", "#FFD60A"),
+            ("Verde", "#1DB954"),
+            ("Azul", "#2F7BFF"),
+            ("Rosa", "#FF4FA3"),
+            ("Branco", "#FFFFFF"),
+            ("Preto", "#1A1A1A"),
+        };
+
+        private static readonly (string Label, double Seconds)[] InkDurations =
+        {
+            ("Some depois de 1 segundo", 1),
+            ("Some depois de 1,5 segundo", 1.5),
+            ("Some depois de 3 segundos", 3),
+            ("Some depois de 6 segundos", 6),
+        };
+
         private readonly Settings _settings = Settings.Load();
         private readonly Stopwatch _clock = Stopwatch.StartNew();
         private readonly List<OverlayWindow> _overlays = new List<OverlayWindow>();
@@ -65,6 +93,15 @@ namespace Ponteirinho
         private double _lastClick = -10;
         private IntPtr _mouseHook = IntPtr.Zero;
         private HwndSource _messageWindow;
+
+        // Desenho
+        private readonly List<InkStroke> _strokes = new List<InkStroke>();
+        private InkStroke _currentStroke;
+        private bool _pressPending; // botão apertado, ainda sem saber se é clique ou risco
+        private Native.POINT _pressPoint;
+        private WinForms.ToolStripMenuItem _drawItem;
+        private readonly List<WinForms.ToolStripMenuItem> _inkColorItems = new List<WinForms.ToolStripMenuItem>();
+        private readonly List<WinForms.ToolStripMenuItem> _inkTimeItems = new List<WinForms.ToolStripMenuItem>();
 
         private WinForms.NotifyIcon _tray;
         private IntPtr _trayIconHandle = IntPtr.Zero;
@@ -147,7 +184,8 @@ namespace Ponteirinho
 
             double now = _clock.Elapsed.TotalSeconds;
             double since = now - _lastClick;
-            bool animating = since < RippleDuration + 0.05;
+            bool inking = UpdateInkFade(now);
+            bool animating = since < RippleDuration + 0.05 || inking;
             bool moved = cursor.X != _lastCursor.X || cursor.Y != _lastCursor.Y;
             if (moved || animating) _lastActivity = now;
 
@@ -159,6 +197,8 @@ namespace Ponteirinho
             }
             _lastCursor = cursor;
             _dirty = false;
+
+            foreach (var o in _overlays) o.UpdateInk(_strokes);
 
             var frame = new PointerFrame
             {
@@ -175,6 +215,95 @@ namespace Ponteirinho
                 if (o.Contains(cursor.X, cursor.Y)) o.ShowPointer(frame);
                 else o.HidePointer();
             }
+        }
+
+        /// <summary>Apaga aos poucos os riscos terminados. Devolve true enquanto houver risco na tela.</summary>
+        private bool UpdateInkFade(double now)
+        {
+            for (int i = _strokes.Count - 1; i >= 0; i--)
+            {
+                var s = _strokes[i];
+                if (s.EndedAt < 0) continue;
+                double t = now - s.EndedAt - _settings.InkSeconds;
+                if (t >= InkFadeDuration)
+                {
+                    _strokes.RemoveAt(i);
+                    _dirty = true; // as janelas precisam tirar o risco
+                }
+                else if (t > 0)
+                {
+                    double f = t / InkFadeDuration;
+                    s.Opacity = 1 - f * f; // começa devagar e acelera
+                }
+            }
+            return _strokes.Count > 0;
+        }
+
+        // ---------------- Desenho ao arrastar ----------------
+
+        /// <summary>
+        /// Com o desenho ligado, o Ponteirinho segura o clique esquerdo: se o mouse andar, vira risco;
+        /// se soltar sem andar, o clique é reenviado normalmente. Devolve true para engolir o evento.
+        /// </summary>
+        private bool HandleDrawing(int msg, Native.POINT pt)
+        {
+            switch (msg)
+            {
+                case Native.WM_LBUTTONDOWN:
+                    if (!_settings.DrawEnabled) return false;
+                    _pressPending = true;
+                    _pressPoint = pt;
+                    return true;
+
+                case Native.WM_MOUSEMOVE:
+                    if (_pressPending &&
+                        (Math.Abs(pt.X - _pressPoint.X) > DragThreshold || Math.Abs(pt.Y - _pressPoint.Y) > DragThreshold))
+                    {
+                        _pressPending = false;
+                        _currentStroke = new InkStroke
+                        {
+                            Color = HandColors.Parse(_settings.InkColor),
+                            Width = 5 * _settings.HandWidth / 72.0,
+                        };
+                        _currentStroke.Add(_pressPoint.X, _pressPoint.Y);
+                        _strokes.Add(_currentStroke);
+                    }
+                    _currentStroke?.Add(pt.X, pt.Y);
+                    return false; // o cursor precisa continuar andando
+
+                case Native.WM_LBUTTONUP:
+                    if (_pressPending)
+                    {
+                        // Foi só um clique: entrega para o programa embaixo.
+                        _pressPending = false;
+                        Application.Current.Dispatcher.BeginInvoke(new Action(() => Native.SendLeftClick(ReplayTag)));
+                        return true;
+                    }
+                    if (_currentStroke != null)
+                    {
+                        _currentStroke.EndedAt = _clock.Elapsed.TotalSeconds;
+                        _currentStroke = null;
+                        return true;
+                    }
+                    return false;
+            }
+            return false;
+        }
+
+        private void ToggleDraw()
+        {
+            _settings.DrawEnabled = !_settings.DrawEnabled;
+            _settings.Save();
+            if (!_settings.DrawEnabled) FinishStroke();
+            if (_drawItem != null) _drawItem.Checked = _settings.DrawEnabled;
+        }
+
+        /// <summary>Termina o risco em andamento (ele some no tempo normal).</summary>
+        private void FinishStroke()
+        {
+            if (_currentStroke != null) _currentStroke.EndedAt = _clock.Elapsed.TotalSeconds;
+            _currentStroke = null;
+            MarkDirty();
         }
 
         // ---------------- Janelas transparentes ----------------
@@ -253,6 +382,15 @@ namespace Ponteirinho
             if (on) InstallMouseHook();
             else RemoveMouseHook();
 
+            if (!on)
+            {
+                // Mão escondida: some com qualquer risco na hora.
+                _pressPending = false;
+                _currentStroke = null;
+                _strokes.Clear();
+                foreach (var o in _overlays) o.UpdateInk(_strokes);
+            }
+
             if (on) MarkDirty();
             else Sleep();
 
@@ -299,16 +437,29 @@ namespace Ponteirinho
 
         private IntPtr MouseHook(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            // Só anota o clique; ele continua normalmente para os outros programas.
+            // Anota o clique (animação + som). Ele segue para os outros programas, exceto quando
+            // o desenho ao arrastar está ligado (aí HandleDrawing decide).
             if (nCode >= 0)
             {
                 int msg = wParam.ToInt32();
-                if (msg == Native.WM_LBUTTONDOWN || msg == Native.WM_RBUTTONDOWN)
+                var info = Marshal.PtrToStructure<Native.MSLLHOOKSTRUCT>(lParam);
+                bool replay = info.ExtraInfo == ReplayTag; // clique reenviado por nós: só passa
+
+                if (!replay && (msg == Native.WM_LBUTTONDOWN || msg == Native.WM_RBUTTONDOWN))
                 {
                     _lastClick = _clock.Elapsed.TotalSeconds;
                     _sound.Play();
                 }
                 Wake(); // qualquer movimento/clique acorda o desenho
+
+                try
+                {
+                    if (!replay && HandleDrawing(msg, info.Pt)) return new IntPtr(1);
+                }
+                catch
+                {
+                    // Um erro aqui nunca pode travar o mouse: deixa o evento passar.
+                }
             }
             return Native.CallNextHookEx(_mouseHook, nCode, wParam, lParam);
         }
@@ -335,6 +486,11 @@ namespace Ponteirinho
                     $"Outro programa já usa {HotkeyLabel}. Use o ícone na bandeja para ligar/desligar.",
                     WinForms.ToolTipIcon.Warning);
             }
+
+            bool drawOk = Native.RegisterHotKey(_messageWindow.Handle, DrawHotkeyId,
+                Native.MOD_CONTROL | Native.MOD_ALT | Native.MOD_NOREPEAT, (uint)'D');
+            if (!drawOk && _drawItem != null)
+                _drawItem.Text = "Desenhar ao arrastar (atalho em uso por outro programa)";
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -342,6 +498,11 @@ namespace Ponteirinho
             if (msg == Native.WM_HOTKEY && wParam.ToInt32() == HotkeyId)
             {
                 Toggle();
+                handled = true;
+            }
+            else if (msg == Native.WM_HOTKEY && wParam.ToInt32() == DrawHotkeyId)
+            {
+                ToggleDraw();
                 handled = true;
             }
             return IntPtr.Zero;
@@ -357,6 +518,11 @@ namespace Ponteirinho
             _toggleItem.Click += (s, e) => Toggle();
             _toggleItem.Font = new Drawing.Font(_toggleItem.Font, Drawing.FontStyle.Bold);
             menu.Items.Add(_toggleItem);
+
+            _drawItem = new WinForms.ToolStripMenuItem($"Desenhar ao arrastar\t{DrawHotkeyLabel}") { Checked = _settings.DrawEnabled };
+            _drawItem.ToolTipText = "Clique e arraste para riscar a tela; o risco some sozinho. Clique simples continua funcionando.";
+            _drawItem.Click += (s, e) => ToggleDraw();
+            menu.Items.Add(_drawItem);
             menu.Items.Add(new WinForms.ToolStripSeparator());
 
             // Tipo de mão
@@ -494,6 +660,40 @@ namespace Ponteirinho
             }
             menu.Items.Add(soundMenu);
 
+            // Desenho: cor e quanto tempo o risco fica
+            var inkMenu = new WinForms.ToolStripMenuItem("Desenho (cor e tempo)");
+            foreach (var (name, hex) in InkColors)
+            {
+                var item = new WinForms.ToolStripMenuItem(name)
+                {
+                    Tag = hex,
+                    Image = HandTinter.Swatch(HandColors.Parse(hex), 16),
+                    Checked = string.Equals(_settings.InkColor, hex, StringComparison.OrdinalIgnoreCase),
+                };
+                item.Click += (s, e) =>
+                {
+                    _settings.InkColor = hex;
+                    _settings.Save();
+                    _inkColorItems.ForEach(i => i.Checked = (string)i.Tag == hex);
+                };
+                _inkColorItems.Add(item);
+                inkMenu.DropDownItems.Add(item);
+            }
+            inkMenu.DropDownItems.Add(new WinForms.ToolStripSeparator());
+            foreach (var (label, seconds) in InkDurations)
+            {
+                var item = new WinForms.ToolStripMenuItem(label) { Tag = seconds, Checked = Math.Abs(_settings.InkSeconds - seconds) < 0.01 };
+                item.Click += (s, e) =>
+                {
+                    _settings.InkSeconds = seconds;
+                    _settings.Save();
+                    _inkTimeItems.ForEach(i => i.Checked = Math.Abs((double)i.Tag - seconds) < 0.01);
+                };
+                _inkTimeItems.Add(item);
+                inkMenu.DropDownItems.Add(item);
+            }
+            menu.Items.Add(inkMenu);
+
             var hideCursor = new WinForms.ToolStripMenuItem("Esconder o cursor do mouse") { Checked = _settings.HideCursor };
             hideCursor.Click += (s, e) =>
             {
@@ -598,6 +798,7 @@ namespace Ponteirinho
             if (_messageWindow != null)
             {
                 Native.UnregisterHotKey(_messageWindow.Handle, HotkeyId);
+                Native.UnregisterHotKey(_messageWindow.Handle, DrawHotkeyId);
                 _messageWindow.Dispose();
             }
 

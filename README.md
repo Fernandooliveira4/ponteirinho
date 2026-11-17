@@ -10,6 +10,9 @@ Uma mãozinha com uma vareta de professor que aponta para onde está o mouse. Fe
   - **clique esquerdo:** liga e desliga;
   - **clique direito:** abre as opções.
 - Ao clicar, a mão dá um "cutucão", toca um barulhinho e aparece uma onda na ponta do dedo.
+- **Ctrl+Alt+D** liga e desliga o **desenho ao arrastar**: com ele ligado, clique e arraste para riscar a tela (para destacar algo enquanto fala). O risco some sozinho depois de um instante.
+  - Clique simples (e clique duplo) continuam funcionando normalmente nos programas.
+  - Arrastar coisas (selecionar texto, mover janelas) só funciona com o desenho desligado.
 
 ### Opções (clique direito no ícone)
 
@@ -20,6 +23,8 @@ Uma mãozinha com uma vareta de professor que aponta para onde está o mouse. Fe
 | Tamanho | Pequena, Média, Grande, Enorme |
 | Vareta | de onde vem (direita, centro, esquerda) e cor (preta ou madeira; a cor só vale para as mãos pintáveis, as 3D usam a vareta do próprio desenho) |
 | Som ao clicar | Desligado, Pop suave, Toque de madeira, Bolha + volume baixo/médio/alto |
+| Desenhar ao arrastar | liga/desliga o risco que some (o mesmo que Ctrl+Alt+D) |
+| Desenho (cor e tempo) | Roxo, Vermelho, Laranja, Amarelo, Verde, Azul, Rosa, Branco, Preto + some depois de 1; 1,5; 3 ou 6 segundos |
 | Esconder o cursor do mouse | ligado por padrão: enquanto a mão aparece, a ponta do dedo vira o cursor |
 
 ### Se o cursor do mouse sumir
