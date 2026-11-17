@@ -80,3 +80,17 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 ```
 
 Feche o Ponteirinho antes, senão o `.exe` fica bloqueado.
+
+## Versões (git e GitHub)
+
+O projeto é um repositório git, com cópia privada em github.com/Fernandooliveira4/ponteirinho. A pasta `Ponteirinho-app\` fica de fora porque é recriada pela compilação.
+
+Para salvar uma nova versão, rode na pasta `Tiny Hand\`:
+
+```
+git add -A
+git commit -m "o que mudou"
+git push
+```
+
+Para ver o histórico: `git log --oneline`.
