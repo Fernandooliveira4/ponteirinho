@@ -52,6 +52,10 @@ As preferências ficam salvas em `%APPDATA%\Ponteirinho\settings.json`.
 | `arte\mao-3d.figcraft` | a mão Massinha 3D, para editar no FigCraft (feita com sombras internas e desfoques) |
 | `arte\maos.vectorcraft` | as mãos Fofinha, Luva e Clássica (uma prancheta por tipo), para editar no VectorCraft |
 
+## Licença
+
+O código do Ponteirinho está sob **licença MIT** (veja o arquivo `LICENSE`): qualquer pessoa pode usar, copiar e modificar, desde que mantenha o aviso de licença.
+
 ## Créditos
 
 As 36 mãos 3D vêm do app TinyHand para Mac (github.com/nilbuild/tinyhand), de Kamran Ahmed, sob **licença MIT**. Várias receitas de som ao clicar também foram adaptadas do script `make-sounds.py` do TinyHand. Essa licença permite usar e modificar as imagens, desde que o aviso dela vá junto. Por isso o arquivo `LICENSE-TinyHand.txt` fica ao lado do `Ponteirinho.exe`, e o menu tem o item "Créditos".
@@ -88,7 +92,7 @@ Feche o Ponteirinho antes, senão o `.exe` fica bloqueado.
 
 ## Versões (git e GitHub)
 
-O projeto é um repositório git, com cópia privada em github.com/Fernandooliveira4/ponteirinho. A pasta `Ponteirinho-app\` fica de fora porque é recriada pela compilação.
+O projeto é um repositório git, com cópia pública em github.com/Fernandooliveira4/ponteirinho. A pasta `Ponteirinho-app\` fica de fora porque é recriada pela compilação.
 
 Para salvar uma nova versão, rode na pasta `Tiny Hand\`:
 
